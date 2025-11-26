@@ -1,19 +1,22 @@
 #ifndef LOGGER_LIBRARY_H
 #define LOGGER_LIBRARY_H
 
+#define BUFFER_SIZE 256
+
 #ifdef __AVR__
 #include  <Arduino.h>
 #include <stdio.h>
 typedef void (*Callback)(const char*);
 
 #elifdef __linux__
+#define PC_DEVICE
 #include <string>
 #include  <mutex>
 #include <functional>
 using Callback = std::function<void(const char *)>;
+using namespace std;
 
 #endif
-
 
 enum class LogLevel {
     INFO,
@@ -34,7 +37,7 @@ class Logger {
     template<typename... Args>
     static void logF(const LogLevel level,const char *format, Args... args)
     {
-        char buffer[256];
+        char buffer[BUFFER_SIZE];
         const int size =  snprintf(buffer,sizeof(buffer), format,args...);
         if(size < 0) {
             log(LogLevel::ERROR, "Format error in log message");
@@ -50,14 +53,19 @@ class Logger {
 private:
     static Callback _writeCallback;
     const static char * LogLevelToStr(LogLevel level) ;
+#ifdef PC_DEVICE
     static std::mutex _mutex;
+#endif
+
 };
 
 template<size_t bufferSize>
 Callback Logger<bufferSize>::_writeCallback = nullptr;
 
+#ifdef PC_DEVICE
 template<size_t bufferSize>
 std::mutex Logger<bufferSize>::_mutex = std::mutex();
+#endif
 
 template<size_t bufferSize>
 void Logger<bufferSize>::log(const LogLevel level, const char *content) {
@@ -69,7 +77,7 @@ void Logger<bufferSize>::log(const LogLevel level, const char *content) {
         return;
     }
     char tempBuffer[bufferSize];
-    int len = std::snprintf(tempBuffer,bufferSize,"[%s] %s",LogLevelToStr(level),content);
+    int len = snprintf(tempBuffer,bufferSize,"[%s] %s",LogLevelToStr(level),content);
 
     if (len < 0 || len >= bufferSize) //error de format
         return;
