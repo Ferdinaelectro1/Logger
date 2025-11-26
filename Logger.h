@@ -1,22 +1,38 @@
 #ifndef LOGGER_LIBRARY_H
 #define LOGGER_LIBRARY_H
 
-#define BUFFER_SIZE 256
+// -----------------------------------------------------------------------------
+// PLATFORM DETECTION
+// -----------------------------------------------------------------------------
 
-#ifdef __AVR__
-#include  <Arduino.h>
-#include <stdio.h>
-typedef void (*Callback)(const char*);
-#endif
-
-#ifdef   __linux__
-#define  PC_DEVICE
-#include <string>
-#include  <mutex>
+#if defined(__AVR__) || defined(ARDUINO)
+    #define MCU_DEVICE
+    #include <Arduino.h>
+    typedef void (*Callback)(const char*);
+#elif defined(__linux__) || defined(__unix__)
+#define PC_DEVICE
+#include <cstdio>
+#include <mutex>
 #include <functional>
 using Callback = std::function<void(const char *)>;
-using namespace std;
-
+#elif defined(_WIN32)
+#define PC_DEVICE
+#include <cstdio>
+#include <mutex>
+#include <functional>
+using Callback = std::function<void(const char *)>;
+#elif defined(__APPLE__)
+#define PC_DEVICE
+#include <cstdio>
+#include <mutex>
+#include <functional>
+using Callback = std::function<void(const char *)>;
+#elif defined(STM32F1xx) || defined(STM32F4xx) || defined(STM32H7xx)
+#define MCU_DEVICE
+#include "stm32f4xx_hal.h"
+typedef void (*Callback)(const char*);
+#else
+#error "Unsupported platform"
 #endif
 
 enum class LogLevel {
@@ -34,11 +50,11 @@ class Logger {
     Logger(const Logger &) = delete;
     Logger &operator=(const Logger &) = delete;
     static void log(LogLevel level,const char* content);
-    static void setWriteCallback(const Callback &writeCallback) ;
+    static void setWriteCallback(const Callback &cb) ;
     template<typename... Args>
     static void logF(const LogLevel level,const char *format, Args... args)
     {
-        char buffer[BUFFER_SIZE];
+        char buffer[bufferSize];
         const int size =  snprintf(buffer,sizeof(buffer), format,args...);
         if(size < 0) {
             log(LogLevel::ERROR, "Format error in log message");
@@ -53,7 +69,7 @@ class Logger {
 
 private:
     static Callback _writeCallback;
-    const static char * LogLevelToStr(LogLevel level) ;
+    static constexpr const char * LogLevelToStr(LogLevel level) ;
 #ifdef PC_DEVICE
     static std::mutex _mutex;
 #endif
@@ -86,17 +102,22 @@ void Logger<bufferSize>::log(const LogLevel level, const char *content) {
     if (_writeCallback != nullptr) {
         _writeCallback(static_cast<const char *>(tempBuffer));
     }
-}
-
-template<size_t bufferSize>
-void Logger<bufferSize>::setWriteCallback(const Callback &writeCallback) {
-    if (writeCallback != nullptr) {
-        _writeCallback = writeCallback;
+    else {
+#ifdef ARDUINO
+        Serial.println(tempBuffer);
+#else
+        printf("%s\n", tempBuffer);
+#endif
     }
 }
 
 template<size_t bufferSize>
-const char * Logger<bufferSize>::LogLevelToStr(const LogLevel level) {
+void Logger<bufferSize>::setWriteCallback(const Callback &cb) {
+    _writeCallback = cb;
+}
+
+template<size_t bufferSize>
+constexpr const char * Logger<bufferSize>::LogLevelToStr(const LogLevel level) {
     switch (level) {
         case LogLevel::INFO:
             return "INFO";
