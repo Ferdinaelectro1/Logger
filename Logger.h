@@ -7,9 +7,10 @@
 #include  <Arduino.h>
 #include <stdio.h>
 typedef void (*Callback)(const char*);
+#endif
 
-#elifdef __linux__
-#define PC_DEVICE
+#ifdef   __linux__
+#define  PC_DEVICE
 #include <string>
 #include  <mutex>
 #include <functional>

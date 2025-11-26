@@ -1,8 +1,16 @@
 //
 // Created by ferdinand on 24/11/2025.
 //
+
+#ifdef __linux__
 #include <iostream>
 #include <ostream>
+#endif
+
+#ifdef  __AVR__
+#include <Arduino.h>
+#endif
+
 
 #include "Logger.h"
 
