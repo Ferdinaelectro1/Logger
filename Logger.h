@@ -1,6 +1,18 @@
 #ifndef LOGGER_LIBRARY_H
 #define LOGGER_LIBRARY_H
 
+namespace LoggerColor {
+    constexpr const char* RESET  = "\033[0m";
+    constexpr const char* RED    = "\033[31m";
+    constexpr const char* GREEN  = "\033[32m";
+    constexpr const char* YELLOW = "\033[33m";
+    constexpr const char* BLUE   = "\033[34m";
+    constexpr const char* MAGENTA= "\033[35m";
+    constexpr const char* CYAN   = "\033[36m";
+    constexpr const char* WHITE  = "\033[37m";
+}
+
+
 // -----------------------------------------------------------------------------
 // PLATFORM DETECTION
 // -----------------------------------------------------------------------------
@@ -35,6 +47,7 @@ typedef void (*Callback)(const char*);
 #error "Unsupported platform"
 #endif
 
+
 enum class LogLevel {
     INFO,
     DEBUG,
@@ -42,6 +55,7 @@ enum class LogLevel {
     ERROR,
     FATAL
 };
+
 
 template<size_t bufferSize>
 class Logger {
@@ -70,6 +84,18 @@ class Logger {
 private:
     static Callback _writeCallback;
     static constexpr const char * LogLevelToStr(LogLevel level) ;
+#ifdef PC_DEVICE
+    static constexpr const char* LogLevelColor(LogLevel level) {
+        switch(level) {
+            case LogLevel::INFO:    return LoggerColor::GREEN;
+            case LogLevel::DEBUG:   return LoggerColor::CYAN;
+            case LogLevel::WARNING: return LoggerColor::YELLOW;
+            case LogLevel::ERROR:   return LoggerColor::RED;
+            case LogLevel::FATAL:   return LoggerColor::MAGENTA;
+            default:                return LoggerColor::WHITE;
+        }
+    }
+#endif
 #ifdef PC_DEVICE
     static std::mutex _mutex;
 #endif
@@ -103,10 +129,15 @@ void Logger<bufferSize>::log(const LogLevel level, const char *content) {
         _writeCallback(static_cast<const char *>(tempBuffer));
     }
     else {
-#ifdef ARDUINO
-        Serial.println(tempBuffer);
+#ifdef PC_DEVICE
+        printf("%s[%s] %s%s\n",
+            LogLevelColor(level),       // couleur de début
+            LogLevelToStr(level),       // texte du niveau
+            content,                    // message
+            LoggerColor::RESET          // reset couleur
+        );
 #else
-        printf("%s\n", tempBuffer);
+        Serial.println(tempBuffer); // sur MCU
 #endif
     }
 }
